@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Structural Analysis Chatbot</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e5e5e5;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #202123;
+        }
+
+        .upload-btn {
+            background: #10a37f;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: none;
+        }
+
+        .upload-btn:hover {
+            background: #0d8c6d;
+        }
+
+        .upload-btn.visible {
+            display: block;
+        }
+
+        .change-file-btn {
+            background: #f7f7f8;
+            color: #202123;
+            border: 1px solid #d9d9e3;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .change-file-btn:hover {
+            background: #ececf1;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 20px;
+        }
+
+        .welcome-screen {
+            max-width: 800px;
+            width: 100%;
+            padding: 40px 20px;
+            text-align: center;
+            margin-top: 80px;
+        }
+
+        .welcome-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .welcome-title {
+            font-size: 32px;
+            font-weight: 600;
+            color: #202123;
+            margin-bottom: 12px;
+        }
+
+        .welcome-subtitle {
+            font-size: 16px;
+            color: #6e6e80;
+            margin-bottom: 40px;
+        }
+
+        .upload-area {
+            background: #f7f7f8;
+            border: 2px dashed #d9d9e3;
+            border-radius: 12px;
+            padding: 60px 40px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            background: #ececf1;
+            border-color: #10a37f;
+        }
+
+        .upload-area.dragover {
+            background: #e3f9f0;
+            border-color: #10a37f;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            color: #202123;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .upload-subtext {
+            font-size: 14px;
+            color: #6e6e80;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .messages {
+            max-width: 800px;
+            width: 100%;
+            padding: 20px;
+            display: none;
+        }
+
+        .messages.visible {
+            display: block;
+        }
+
+        .message {
+            margin-bottom: 24px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: #10a37f;
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: #f7f7f8;
+            color: #202123;
+        }
+
+        .message-content strong {
+            font-weight: 600;
+        }
+
+        .plot-container {
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            width: 100%;
+            display: block;
+            clear: both;
+        }
+
+        .plot {
+            width: 100%;
+            height: 600px;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: #f7f7f8;
+            border-radius: 18px;
+            max-width: 60px;
+        }
+
+        .typing-indicator.visible {
+            display: block;
+        }
+
+        .typing-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #9b9ba5;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.7;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+
+        .input-container {
+            position: sticky;
+            bottom: 0;
+            background: #ffffff;
+            border-top: 1px solid #e5e5e5;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .input-wrapper {
+            max-width: 800px;
+            width: 100%;
+            position: relative;
+        }
+
+        .input-box {
+            width: 100%;
+            padding: 12px 50px 12px 16px;
+            border: 1px solid #d9d9e3;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: all 0.2s;
+            max-height: 200px;
+            min-height: 48px;
+        }
+
+        .input-box:focus {
+            border-color: #10a37f;
+            box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+        }
+
+        .input-box:disabled {
+            background: #f7f7f8;
+            cursor: not-allowed;
+        }
+
+        .send-btn {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            background: #10a37f;
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: #0d8c6d;
+        }
+
+        .send-btn:disabled {
+            background: #d9d9e3;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 12px 0;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        .success-message {
+            background: #e3f9f0;
+            color: #0d8c6d;
+            padding: 12px 16px;
+            border-radius: 18px;
+            margin-bottom: 24px;
+            font-size: 15px;
+            text-align: center;
+        }
+
+        /* Scrollbar styling */
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #d9d9e3;
+            border-radius: 4px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: #b4b4b4;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">📊 Structural Analysis Assistant</div>
+        <div>
+            <button class="upload-btn" id="uploadBtn" onclick="triggerFileUpload()">Upload File</button>
+            <button class="change-file-btn" id="changeFileBtn" style="display: none;" onclick="triggerFileUpload()">Change File</button>
+            <button class="change-file-btn" id="clearChatBtn" style="display: none;" onclick="clearChat()">Clear Chat</button>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+        <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-icon">📊</div>
+            <h1 class="welcome-title">Structural Analysis Assistant</h1>
+            <p class="welcome-subtitle">Upload your Excel file to start analyzing your structural test data</p>
+
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Drag & drop your Excel file here</div>
+                <div class="upload-subtext">or click to browse (supports .xlsx, .xls)</div>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls">
+        </div>
+
+        <div class="messages" id="messages"></div>
+    </div>
+
+    <div class="input-container">
+        <div class="input-wrapper">
+            <div class="error-message" id="errorMessage"></div>
+            <textarea
+                class="input-box"
+                id="inputBox"
+                placeholder="Ask a question about your data..."
+                rows="1"
+                disabled
+            ></textarea>
+            <button class="send-btn" id="sendBtn" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Session data storage
+        let sessionData = null;
+        let conversationHistory = [];
+
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const messages = document.getElementById('messages');
+        const inputBox = document.getElementById('inputBox');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatContainer = document.getElementById('chatContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const changeFileBtn = document.getElementById('changeFileBtn');
+        const clearChatBtn = document.getElementById('clearChatBtn');
+
+        // File upload handling
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        function triggerFileUpload() {
+            fileInput.click();
+        }
+
+        async function handleFileUpload(file) {
+            showError('');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show loading
+            welcomeScreen.style.display = 'none';
+            messages.classList.add('visible');
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Upload failed');
+                }
+
+                // Store session data
+                sessionData = data;
+                saveToSessionStorage();
+
+                // Show success message
+                addMessage('assistant', `✅ File uploaded successfully! Your data contains:\n- Reference case: **${data.stats.reference.points} data points**\n- Test specimen: **${data.stats.test.points} data points**\n\nAsk me anything about your data, or request specific plots!`, true);
+
+                // Enable input
+                inputBox.disabled = false;
+                sendBtn.disabled = false;
+                inputBox.focus();
+
+                // Update header buttons
+                uploadBtn.style.display = 'none';
+                changeFileBtn.style.display = 'block';
+                clearChatBtn.style.display = 'block';
+
+            } catch (err) {
+                showError(`Error: ${err.message}`);
+                welcomeScreen.style.display = 'block';
+                messages.classList.remove('visible');
+            }
+        }
+
+        // Input handling
+        inputBox.addEventListener('input', () => {
+            inputBox.style.height = 'auto';
+            inputBox.style.height = Math.min(inputBox.scrollHeight, 200) + 'px';
+        });
+
+        inputBox.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+
+        async function sendMessage() {
+            const message = inputBox.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addMessage('user', message);
+            conversationHistory.push({ role: 'user', content: message });
+
+            // Clear input
+            inputBox.value = '';
+            inputBox.style.height = 'auto';
+
+            // Show typing indicator
+            const typingId = showTypingIndicator();
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_data: sessionData
+                    })
+                });
+
+                const data = await response.json();
+
+                // Remove typing indicator
+                removeTypingIndicator(typingId);
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Request failed');
+                }
+
+                // Handle response based on type
+                if (data.type === 'text') {
+                    addMessage('assistant', data.response);
+                } else if (data.type === 'plot') {
+                    addMessage('assistant', data.response, false, data.plot);
+                } else if (data.type === 'plots') {
+                    addMessage('assistant', data.response, false, null, data.plots);
+                }
+
+                conversationHistory.push({ role: 'assistant', content: data.response });
+                saveToSessionStorage();
+
+            } catch (err) {
+                removeTypingIndicator(typingId);
+                showError(`Error: ${err.message}`);
+            }
+        }
+
+        function addMessage(role, content, isSuccess = false, plot = null, plots = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+
+            if (isSuccess) {
+                contentDiv.classList.add('success-message');
+            }
+
+            // Format markdown-style text
+            let formattedContent = content
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+
+            contentDiv.innerHTML = formattedContent;
+            messageDiv.appendChild(contentDiv);
+
+            // Add plot if provided
+            if (plot) {
+                const plotContainer = document.createElement('div');
+                plotContainer.className = 'plot-container';
+                
+                // Add plot title
+                const plotTitle = document.createElement('h3');
+                plotTitle.style.marginBottom = '15px';
+                plotTitle.style.color = '#202123';
+                plotTitle.style.fontSize = '16px';
+                plotTitle.style.fontWeight = '600';
+                plotTitle.textContent = plot.layout.title.text || 'Plot';
+                plotContainer.appendChild(plotTitle);
+                
+                const plotDiv = document.createElement('div');
+                plotDiv.className = 'plot';
+                plotContainer.appendChild(plotDiv);
+                messageDiv.appendChild(plotContainer);
+
+                // Render plot after adding to DOM
+                messages.appendChild(messageDiv);
+                Plotly.newPlot(plotDiv, plot.data, plot.layout, {
+                    responsive: true,
+                    displayModeBar: true,
+                    modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
+                    displaylogo: false
+                });
+                scrollToBottom();
+                return;
+            }
+
+            // Add multiple plots if provided
+            if (plots) {
+                // First add the text message
+                messages.appendChild(messageDiv);
+
+                const plotNames = Object.keys(plots);
+                plotNames.forEach(plotName => {
+                    // Create a separate message for each plot
+                    const plotMessageDiv = document.createElement('div');
+                    plotMessageDiv.className = 'message assistant';
+                    
+                    const plotContainer = document.createElement('div');
+                    plotContainer.className = 'plot-container';
+                    plotContainer.style.maxWidth = '100%';
+                    plotContainer.style.width = '100%';
+                    
+                    // Add plot title
+                    const plotTitle = document.createElement('h3');
+                    plotTitle.style.marginBottom = '15px';
+                    plotTitle.style.color = '#202123';
+                    plotTitle.style.fontSize = '16px';
+                    plotTitle.style.fontWeight = '600';
+                    plotTitle.textContent = plots[plotName].layout.title.text || plotName.replace(/_/g, ' ');
+                    plotContainer.appendChild(plotTitle);
+                    
+                    const plotDiv = document.createElement('div');
+                    plotDiv.className = 'plot';
+                    plotContainer.appendChild(plotDiv);
+                    plotMessageDiv.appendChild(plotContainer);
+                    
+                    // Add to messages
+                    messages.appendChild(plotMessageDiv);
+
+                    // Render plot with better configuration
+                    Plotly.newPlot(plotDiv, plots[plotName].data, plots[plotName].layout, {
+                        responsive: true,
+                        displayModeBar: true,
+                        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
+                        displaylogo: false
+                    });
+                });
+
+                scrollToBottom();
+                return;
+            }
+
+            messages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function showTypingIndicator() {
+            const id = 'typing-' + Date.now();
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant';
+            messageDiv.id = id;
+
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator visible';
+            typingDiv.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+
+            messageDiv.appendChild(typingDiv);
+            messages.appendChild(messageDiv);
+            scrollToBottom();
+
+            return id;
+        }
+
+        function removeTypingIndicator(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.remove();
+            }
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showError(msg) {
+            if (msg) {
+                errorMessage.textContent = msg;
+                errorMessage.classList.add('visible');
+            } else {
+                errorMessage.classList.remove('visible');
+            }
+        }
+
+        function saveToSessionStorage() {
+            if (sessionData) {
+                sessionStorage.setItem('structuralAnalysisData', JSON.stringify(sessionData));
+                sessionStorage.setItem('conversationHistory', JSON.stringify(conversationHistory));
+            }
+        }
+
+        function loadFromSessionStorage() {
+            const savedData = sessionStorage.getItem('structuralAnalysisData');
+            const savedConversation = sessionStorage.getItem('conversationHistory');
+
+            if (savedData) {
+                sessionData = JSON.parse(savedData);
+                conversationHistory = savedConversation ? JSON.parse(savedConversation) : [];
+
+                // Restore UI state
+                welcomeScreen.style.display = 'none';
+                messages.classList.add('visible');
+                inputBox.disabled = false;
+                sendBtn.disabled = false;
+                uploadBtn.style.display = 'none';
+                changeFileBtn.style.display = 'block';
+                clearChatBtn.style.display = 'block';
+
+                // Restore conversation
+                if (conversationHistory.length > 0) {
+                    conversationHistory.forEach(msg => {
+                        if (msg.role === 'user') {
+                            addMessageToDOM('user', msg.content);
+                        } else {
+                            addMessageToDOM('assistant', msg.content);
+                        }
+                    });
+                } else {
+                    // Show welcome back message if no conversation history
+                    addMessageToDOM('assistant', `✅ Welcome back! Your data has been restored:\n- Reference case: **${sessionData.stats.reference.points} data points**\n- Test specimen: **${sessionData.stats.test.points} data points**\n\nAsk me anything about your data!`, true);
+                }
+            } else {
+                uploadBtn.classList.add('visible');
+            }
+        }
+
+        function addMessageToDOM(role, content, isSuccess = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+
+            if (isSuccess) {
+                contentDiv.classList.add('success-message');
+            }
+
+            // Format markdown-style text
+            let formattedContent = content
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+
+            contentDiv.innerHTML = formattedContent;
+            messageDiv.appendChild(contentDiv);
+            messages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function clearChat() {
+            if (confirm('Are you sure you want to clear the chat? This will remove all conversation history but keep your uploaded data.')) {
+                // Clear conversation history
+                conversationHistory = [];
+                
+                // Clear chat messages from DOM
+                messages.innerHTML = '';
+                
+                // Clear session storage for conversation
+                sessionStorage.removeItem('conversationHistory');
+                
+                // Show welcome back message
+                if (sessionData) {
+                    addMessageToDOM('assistant', `✅ Chat cleared! Your data is still loaded:\n- Reference case: **${sessionData.stats.reference.points} data points**\n- Test specimen: **${sessionData.stats.test.points} data points**\n\nAsk me anything about your data!`, true);
+                }
+            }
+        }
+
+        // Load session on page load
+        window.addEventListener('load', loadFromSessionStorage);
+    </script>
+</body>
+</html>
