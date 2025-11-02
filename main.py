@@ -1073,8 +1073,11 @@ def generate_plot_for_query(query: str, session_data: dict):
         'test_name': test_name
     }
 
-    # Check if user is asking for plots/graphs
-    asking_for_visual = any(word in query_lower for word in ['show', 'display', 'plot', 'graph', 'chart', 'visualize', 'see'])
+    # Check if user is asking for plots/graphs (English and French keywords)
+    asking_for_visual = any(word in query_lower for word in [
+        'show', 'display', 'plot', 'graph', 'chart', 'visualize', 'see',
+        'afficher', 'affiche', 'tracer', 'graphique', 'courbe', 'visualiser', 'voir', 'dessiner', 'dessine'
+    ])
 
     # Determine which plot to generate
     plot_type = None
@@ -1115,12 +1118,16 @@ def generate_plot_for_query(query: str, session_data: dict):
             plot_type = 'hysteresis_ref'
     
     # Force-displacement curve specific requests (but not envelope curves)
-    elif asking_for_visual and 'curve' in query_lower and ('force' in query_lower or 'displacement' in query_lower) and not ('envelope' in query_lower or 'backbone' in query_lower):
-        if 'test' in query_lower or any(test_word in query_lower for test_word in ['bcjs', 'specimen']):
+    # Support both English and French keywords
+    elif asking_for_visual and \
+         (('force' in query_lower and ('displacement' in query_lower or 'déplacement' in query_lower or 'deplacement' in query_lower)) or \
+          ('curve' in query_lower or 'courbe' in query_lower) and ('force' in query_lower or 'displacement' in query_lower or 'déplacement' in query_lower or 'deplacement' in query_lower)) and \
+         not ('envelope' in query_lower or 'backbone' in query_lower or 'enveloppe' in query_lower):
+        if 'test' in query_lower or any(test_word in query_lower for test_word in ['bcjs', 'specimen', 'essai']):
             plot_type = 'hysteresis_test'
-        elif 'reference' in query_lower:
+        elif 'reference' in query_lower or 'référence' in query_lower:
             plot_type = 'hysteresis_ref'
-        elif 'comparison' in query_lower or 'compare' in query_lower or 'vs' in query_lower:
+        elif 'comparison' in query_lower or 'compare' in query_lower or 'vs' in query_lower or 'comparaison' in query_lower:
             plot_type = 'comparison'
         else:
             # Default to reference case for generic "force displacement curve"
